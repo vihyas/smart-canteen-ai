@@ -1,0 +1,7 @@
+# Computer-vision packages for CANTEEN_DETECTOR=yolo
+# Install alongside the main requirements:
+#
+#   pip install -r requirements.txt -r requirements-cv.txt
+#
+ultralytics>=8.2
+opencv-python-headless>=4.9
