@@ -2,7 +2,10 @@
 
 Predicting canteen queues before students join them.
 
-> C29 AI Immersion Task 01 — Vihyas Karthick P, Rathinam Technical Campus.
+> C29 AI Immersion Task 01 — Vihyas Karthick P, Rathinam Technical Campus.  
+> **GitHub Repository:** [https://github.com/vihyas/smart-canteen-ai](https://github.com/vihyas/smart-canteen-ai)  
+> **Web Application (Local):** [http://localhost:3000](http://localhost:3000)  
+> **GitHub Pages (Live Demo):** [https://vihyas.github.io/smart-canteen-ai/](https://vihyas.github.io/smart-canteen-ai/)
 
 A camera (or video) gives a **people count**.  SmartCanteen AI turns it into a
 **crowd level** (LOW / MEDIUM / HIGH), an **estimated wait time** and a
@@ -26,12 +29,14 @@ Camera / video ──► Detector ──► Predictor ──► SQLite DB ──
 
 | Path | Responsibility |
 |---|---|
+| `index.html` | Fully designed Web Application (SPA) with live metrics, charts, ordering, camera feeds, and dark mode. |
+| `server.py` / `start.sh` | Local HTTP dev server with CORS to serve the SPA frontend at `http://localhost:3000`. |
 | `app/detector.py` | People-count sources: `SimulatedDetector`, `DemoRushDetector`, `YoloDetector` (YOLOv8-nano).  Chosen by `CANTEEN_DETECTOR`. |
 | `app/predictor.py` | Pure functions: `crowd_level`, `estimate_wait_minutes`, `forecast_count`, `advice`. |
 | `app/database.py` | SQLite persistence: readings, actual waits, feedback.  Every function takes a `db_path` for easy test isolation. |
 | `app/metrics.py` | Detector accuracy: MAE, bias, exact %, within-one %. |
 | `app/main.py` | FastAPI app — validation, CORS, full docstrings, serves the dashboard at `/`. |
-| `frontend/index.html` | Dashboard (student + staff).  Falls back to offline demo if backend unreachable. |
+| `frontend/index.html` | Fallback prototype dashboard (student + staff). |
 | `js/data/simulationEngine.js` | Polls `GET /queue` every 4 s; updates UI from real backend data.  Falls back to stochastic model when offline. |
 | `scripts/evaluate_detector.py` | Measures YOLO accuracy and speed against manual counts. |
 | `scripts/seed_feedback.py` | Seeds empirical user-testing data (7 participants, 5 stopwatch pairs). |
@@ -44,18 +49,30 @@ Camera / video ──► Detector ──► Predictor ──► SQLite DB ──
 
 ## Quick start
 
+### 1. Start the Backend API & Prediction Engine
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
+### 2. Launch the Fully Designed Web Application
+In a second terminal:
+```bash
+# Via startup script:
+./start.sh
+
+# Or directly:
+python3 server.py 3000
+```
+
 Open in browser:
 
 | URL | Description |
 |---|---|
-| `http://127.0.0.1:8000/` | Live dashboard |
-| `http://127.0.0.1:8000/docs` | Interactive Swagger UI |
+| `http://localhost:3000/` | **Fully designed web application** (live charts, camera queue, order page, staff view) |
+| `http://127.0.0.1:8000/` | Backend status & lightweight queue dashboard |
+| `http://127.0.0.1:8000/docs` | Interactive Swagger UI API Docs |
 | `http://127.0.0.1:8000/redoc` | ReDoc API reference |
 
 The SQLite database `canteen.db` is created automatically (`CANTEEN_DB` changes the path).
