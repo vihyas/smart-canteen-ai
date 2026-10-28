@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartCanteen AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12201A; --panel:#182B22; --panel-2:#1E3327; --line:#2E4A3B;
+    --text:#EFEBDD; --dim:#9CB3A5; --board:#0B1712;
+    --low:#6FB98F; --medium:#F2A93B; --high:#E4573D;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; background:var(--bg); color:var(--text);
+    font-family:'Space Grotesk',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  .wrap{ max-width:940px; margin:0 auto; padding:28px 20px 56px; }
+  button,input,select,textarea{ font-family:inherit; }
+  :focus-visible{ outline:2px solid var(--medium); outline-offset:2px; }
+
+  .topbar{ display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:22px; }
+  .brand{ display:flex; gap:12px; align-items:center; }
+  .mark{ width:32px; height:32px; border-radius:8px; background:linear-gradient(160deg,var(--low),var(--medium)); flex-shrink:0; }
+  .brand h1{ margin:0; font-size:18px; font-weight:600; }
+  .brand small{ color:var(--dim); font-size:12px; }
+  .right{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .pill{ font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 10px; border-radius:999px;
+    border:1px solid var(--line); color:var(--dim); display:inline-flex; align-items:center; gap:7px; }
+  .pill i{ width:7px; height:7px; border-radius:50%; background:var(--dim); display:inline-block; }
+  .pill.live i{ background:var(--low); box-shadow:0 0 8px var(--low); }
+  .pill.offline i{ background:var(--medium); }
+  .pill.err i{ background:var(--high); }
+  .toggle{ display:flex; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:3px; }
+  .toggle button{ border:0; background:transparent; color:var(--dim); font-size:13px; padding:7px 14px; border-radius:7px; cursor:pointer; }
+  .toggle button.active{ background:var(--panel-2); color:var(--text); }
+
+  .board{ background:var(--board); border:1px solid var(--line); border-radius:16px; padding:24px 26px 20px; }
+  .board-top{ display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--dim); margin-bottom:16px; }
+  .board-main{ display:flex; align-items:flex-end; gap:28px; flex-wrap:wrap; }
+  .badge{ display:inline-flex; align-items:center; gap:8px; font-size:15px; font-weight:600; padding:5px 12px; border-radius:999px; margin-bottom:10px; }
+  .badge .sw{ width:9px; height:9px; border-radius:50%; }
+  .wait{ font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:64px; line-height:1; letter-spacing:-0.02em; }
+  .wait .u{ font-size:20px; color:var(--dim); font-weight:500; margin-left:6px; }
+  .side{ margin-left:auto; text-align:right; font-family:'IBM Plex Mono',monospace; }
+  .side .n{ font-size:30px; font-weight:600; }
+  .side .l{ font-size:11px; color:var(--dim); }
+  .advice{ margin-top:18px; padding-top:14px; border-top:1px dashed var(--line); font-size:14px; min-height:22px; }
+
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px; }
+  @media(max-width:660px){ .grid{ grid-template-columns:1fr; } }
+  .panel{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; }
+  .panel h2{ margin:0 0 12px; font-size:12px; font-weight:500; color:var(--dim); letter-spacing:.02em; }
+  .full{ margin-top:16px; }
+
+  .cam{ background:var(--board); border:1px solid var(--line); border-radius:10px; padding:14px; min-height:110px; }
+  .people{ display:flex; flex-wrap:wrap; gap:7px; align-items:center; }
+  .person{ width:15px; height:15px; border-radius:4px 4px 2px 2px; background:var(--medium); opacity:.9; }
+  .mono{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--dim); }
+  .cam .mono{ margin-top:10px; }
+
+  svg.chart{ width:100%; height:130px; display:block; }
+  .legend{ display:flex; justify-content:space-between; margin-top:6px; }
+
+  .fc{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+  .fc b{ font-family:'IBM Plex Mono',monospace; font-size:28px; font-weight:600; }
+  .muted{ color:var(--dim); font-size:13px; }
+
+  .staff-only{ display:none; }
+  body.staff .staff-only{ display:block; }
+  body.staff .student-only{ display:none; }
+  body.staff .grid.staff-only{ display:grid; }
+  ul.recs{ margin:0; padding-left:18px; line-height:1.7; font-size:13px; }
+  ul.recs li::marker{ color:var(--medium); }
+
+  .stat-row{ display:flex; gap:26px; flex-wrap:wrap; margin-bottom:14px; }
+  .stat b{ display:block; font-family:'IBM Plex Mono',monospace; font-size:26px; font-weight:600; }
+  .stat span{ font-size:12px; color:var(--dim); }
+  .form-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+  label{ display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--dim); }
+  input[type=number],textarea{ background:var(--board); border:1px solid var(--line); color:var(--text);
+    border-radius:8px; padding:8px 10px; font-size:14px; width:110px; }
+  textarea{ width:100%; resize:vertical; min-height:56px; }
+  .btn{ background:var(--panel-2); color:var(--text); border:1px solid var(--line); border-radius:8px;
+    padding:9px 14px; font-size:13px; cursor:pointer; }
+  .btn:hover{ border-color:var(--medium); }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+  table{ width:100%; border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:12px; margin-top:12px; }
+  th,td{ text-align:left; padding:5px 8px; border-bottom:1px solid var(--line); }
+  th{ color:var(--dim); font-weight:500; }
+  .stars{ display:flex; gap:6px; margin:6px 0 10px; }
+  .stars button{ width:36px; height:36px; border-radius:8px; border:1px solid var(--line); background:var(--board);
+    color:var(--dim); font-size:14px; cursor:pointer; }
+  .stars button.on{ background:var(--medium); color:#1a1205; border-color:var(--medium); }
+  .status{ font-size:12px; margin-top:8px; min-height:16px; color:var(--dim); }
+  .status.ok{ color:var(--low); } .status.bad{ color:var(--high); }
+
+  .demo-controls{ display:none; }
+  body.offline .demo-controls{ display:block; }
+  input[type=range]{ width:100%; accent-color:var(--medium); }
+  footer{ text-align:center; margin-top:28px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark"></div>
+      <div><h1>SmartCanteen AI</h1><small>Predict the queue before you join it</small></div>
+    </div>
+    <div class="right">
+      <span class="pill" id="modePill"><i></i><span id="modeText">connecting</span></span>
+      <div class="toggle" role="group" aria-label="View">
+        <button id="btnStudent" class="active">Student view</button>
+        <button id="btnStaff">Staff view</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="board" aria-live="polite">
+    <div class="board-top"><span id="boardTitle">MAIN COUNTER</span><span id="clock">--:--</span></div>
+    <div class="board-main">
+      <div>
+        <div class="badge" id="badge"><span class="sw"></span><span id="level">--</span></div>
+        <div class="wait"><span id="wait">--</span><span class="u">MIN WAIT</span></div>
+      </div>
+      <div class="side"><div class="n" id="count">--</div><div class="l">PEOPLE IN QUEUE</div></div>
+    </div>
+    <div class="advice" id="advice">Waiting for the first reading...</div>
+  </section>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Detection</h2>
+      <div class="cam">
+        <div class="people" id="people"></div>
+        <div class="mono" id="camCaption">no reading yet</div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Wait-time trend (latest readings)</h2>
+      <svg class="chart" id="chart" viewBox="0 0 300 130" preserveAspectRatio="none" role="img" aria-label="Wait time trend"></svg>
+      <div class="legend mono"><span id="chartFrom">older</span><span>now</span></div>
+    </div>
+  </div>
+
+  <div class="panel full">
+    <h2>Short-term forecast</h2>
+    <div class="fc">
+      <b id="fcCount">--</b><span class="muted">people in about <span id="fcSteps">3</span> readings</span>
+      <span class="badge" id="fcBadge" style="margin:0"><span class="sw"></span><span id="fcLevel">--</span></span>
+      <span class="muted" id="fcWait"></span>
+    </div>
+    <div class="mono" id="fcNote" style="margin-top:8px"></div>
+  </div>
+
+  <div class="panel full staff-only">
+    <h2>Recommendation for staff</h2>
+    <ul class="recs" id="recs"></ul>
+  </div>
+
+  <div class="grid staff-only">
+    <div class="panel">
+      <h2>Prediction accuracy (stopwatch tests)</h2>
+      <div class="stat-row">
+        <div class="stat"><b id="evMae">--</b><span>mean error (min)</span></div>
+        <div class="stat"><b id="evN">0</b><span>measurements</span></div>
+      </div>
+      <div class="form-row">
+        <label>Predicted (min)<input type="number" id="predIn" min="0" max="180" step="0.5"></label>
+        <label>Actual (min)<input type="number" id="actIn" min="0" max="180" step="0.5" placeholder="stopwatch"></label>
+        <button class="btn" id="logBtn">Log measurement</button>
+      </div>
+      <div class="status" id="logStatus"></div>
+    </div>
+    <div class="panel">
+      <h2>Busiest hours (average people in queue)</h2>
+      <table><thead><tr><th>Hour (UTC)</th><th>Readings</th><th>Average</th><th>Peak</th></tr></thead>
+      <tbody id="hourBody"><tr><td colspan="4" class="muted">no data yet</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <div class="panel full">
+    <h2>Rate this prototype (<span id="fbRole">student</span>)</h2>
+    <div class="stars" id="stars" role="group" aria-label="Rating from 1 to 5"></div>
+    <textarea id="fbComment" maxlength="500" placeholder="What was useful or confusing? (optional)"></textarea>
+    <div class="form-row" style="margin-top:10px">
+      <button class="btn" id="fbBtn">Send feedback</button>
+      <span class="muted" id="fbSummary"></span>
+    </div>
+    <div class="status" id="fbStatus"></div>
+  </div>
+
+  <div class="panel full demo-controls">
+    <h2>Offline demo: simulate time of day (no backend connected)</h2>
+    <div class="mono" id="demoTime" style="margin-bottom:8px">11:00 AM</div>
+    <input type="range" id="demoSlider" min="0" max="36" value="0" aria-label="Simulated time">
+    <div style="margin-top:10px"><button class="btn" id="demoPlay">Play lunch rush</button></div>
+  </div>
+
+  <footer class="mono">C29 AI Immersion · Vihyas Karthick P · only people counts are stored, never images</footer>
+</div>
+
+<script>
+(() => {
+  // ---------- helpers ----------
+  const $ = id => document.getElementById(id);
+  const API = location.protocol.startsWith('http') ? '' : 'http://127.0.0.1:8000';
+  const POLL_MS = 4000;
+  const COLORS = { LOW:'#6FB98F', MEDIUM:'#F2A93B', HIGH:'#E4573D' };
+  const TINTS  = { LOW:'rgba(111,185,143,.16)', MEDIUM:'rgba(242,169,59,.16)', HIGH:'rgba(228,87,61,.16)' };
+  const LABELS = { LOW:'LOW CROWD', MEDIUM:'MEDIUM CROWD', HIGH:'HIGH CROWD' };
+
+  async function api(path, opts = {}) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 4000);
+    try {
+      const res = await fetch(API + path, { ...opts, signal: ctl.signal,
+        headers: { 'Content-Type': 'application/json' } });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const d = body.detail;
+        throw new Error(typeof d === 'string' ? d : (d && d[0] && d[0].msg) || `Request failed (${res.status})`);
+      }
+      return body;
+    } finally { clearTimeout(timer); }
+  }
+
+  const state = { mode: 'connecting', role: 'student', rating: 0, current: null, tick: 0, timer: null, fails: 0 };
+
+  // ---------- rendering ----------
+  function setMode(mode, text) {
+    state.mode = mode;
+    $('modePill').className = 'pill ' + (mode === 'live' ? 'live' : mode === 'offline' ? 'offline' : mode === 'error' ? 'err' : '');
+    $('modeText').textContent = text;
+    document.body.classList.toggle('offline', mode === 'offline');
+  }
+
+  function adviceFor(level, wait) {
+    if (level === 'LOW') return `Short wait (about ${wait} min). Go now.`;
+    if (level === 'MEDIUM') return `Moderate queue (about ${wait} min). Your call.`;
+    return `Long queue (about ${wait} min). Consider coming back later.`;
+  }
+  function recsFor(level, n) {
+    if (level === 'LOW') return ['Keep current counter staffing.', 'Check again in 15 minutes as demand builds toward the peak.'];
+    if (level === 'MEDIUM') return [`About ${n} students waiting: consider opening a second counter.`, 'Pre-stage the most-ordered items to speed up service.'];
+    return [`Peak demand (about ${n} in queue): open every available counter.`, 'Prioritise fast-moving items to cut service time per student.', 'Hold staff breaks until the crowd clears.'];
+  }
+
+  function paintBadge(el, labelEl, level) {
+    el.style.background = TINTS[level]; el.style.color = COLORS[level];
+    el.querySelector('.sw').style.background = COLORS[level];
+    labelEl.textContent = LABELS[level];
+  }
+
+  function renderReading(r, clockText) {
+    state.current = r;
+    paintBadge($('badge'), $('level'), r.crowd_level);
+    $('wait').textContent = r.est_wait_min;
+    $('count').textContent = r.count;
+    $('advice').textContent = state.role === 'staff'
+      ? (r.crowd_level === 'LOW' ? 'Demand is normal. Current staffing should be enough.'
+         : r.crowd_level === 'MEDIUM' ? 'Demand is rising. Consider preparing another counter.'
+         : 'Demand is at peak. Extra support is recommended now.')
+      : adviceFor(r.crowd_level, r.est_wait_min);
+    $('clock').textContent = clockText || new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    $('recs').replaceChildren(...recsFor(r.crowd_level, r.count).map(t => { const li = document.createElement('li'); li.textContent = t; return li; }));
+    if (!$('predIn').value || document.activeElement !== $('predIn')) $('predIn').value = r.est_wait_min;
+
+    const box = $('people'); box.replaceChildren();
+    const shown = Math.min(r.count, 24);
+    for (let i = 0; i < shown; i++) { const d = document.createElement('div'); d.className = 'person'; box.appendChild(d); }
+    if (r.count > shown) { const m = document.createElement('span'); m.className = 'mono'; m.textContent = `+${r.count - shown} more`; box.appendChild(m); }
+    $('camCaption').textContent = `source: ${r.source} · ${r.count} people counted`;
+  }
+
+  function renderChart(waits, currentLevel) {
+    const svg = $('chart'); const w = 300, h = 130, pad = 8;
+    if (waits.length < 2) { svg.replaceChildren(); return; }
+    const max = Math.max(...waits, 5), step = (w - pad * 2) / (waits.length - 1);
+    const pts = waits.map((v, i) => [pad + i * step, h - pad - (v / max) * (h - pad * 2)]);
+    const NS = 'http://www.w3.org/2000/svg';
+    const line = document.createElementNS(NS, 'polyline');
+    line.setAttribute('points', pts.map(p => p.join(',')).join(' '));
+    line.setAttribute('fill', 'none'); line.setAttribute('stroke', COLORS[currentLevel] || '#F2A93B');
+    line.setAttribute('stroke-width', '2.5'); line.setAttribute('stroke-linecap', 'round'); line.setAttribute('stroke-linejoin', 'round');
+    const last = pts[pts.length - 1];
+    const dot = document.createElementNS(NS, 'circle');
+    dot.setAttribute('cx', last[0]); dot.setAttribute('cy', last[1]); dot.setAttribute('r', 4);
+    dot.setAttribute('fill', COLORS[currentLevel] || '#F2A93B');
+    svg.replaceChildren(line, dot);
+  }
+
+  function renderForecast(f) {
+    if (!f) { $('fcCount').textContent = '--'; $('fcLevel').textContent = '--'; $('fcWait').textContent = ''; $('fcNote').textContent = 'Not enough readings yet.'; return; }
+    $('fcCount').textContent = f.forecast_count;
+    $('fcSteps').textContent = f.steps_ahead;
+    paintBadge($('fcBadge'), $('fcLevel'), f.crowd_level);
+    $('fcWait').textContent = `about ${f.est_wait_min} min wait`;
+    $('fcNote').textContent = f.based_on_readings < 3
+      ? `Only ${f.based_on_readings} reading(s): showing the latest count until a trend can be fitted.`
+      : `Straight-line trend through the last ${f.based_on_readings} readings.`;
+  }
+
+  // ---------- live mode ----------
+  async function refreshStaffData() {
+    try {
+      const [ev, hours] = await Promise.all([api('/evaluation'), api('/stats/hourly')]);
+      $('evMae').textContent = ev.mae_minutes === null ? '--' : ev.mae_minutes;
+      $('evN').textContent = ev.samples;
+      const body = $('hourBody'); body.replaceChildren();
+      if (!hours.length) { body.innerHTML = '<tr><td colspan="4" class="muted">no data yet</td></tr>'; return; }
+      hours.forEach(h => {
+        const tr = document.createElement('tr');
+        [h.hour + ':00', h.readings, h.avg_count, h.peak_count].forEach(v => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+        body.appendChild(tr);
+      });
+    } catch (e) { /* shown by the mode pill on the next tick */ }
+  }
+  async function refreshFeedbackSummary() {
+    try {
+      const s = await api('/feedback/summary');
+      $('fbSummary').textContent = s.responses ? `${s.responses} response(s), average ${s.avg_rating}/5` : 'No feedback yet';
+    } catch (e) {}
+  }
+
+  async function liveTick() {
+    try {
+      const r = await api('/queue');
+      renderReading(r);
+      const [hist, fc] = await Promise.all([
+        api('/readings?limit=30'),
+        api('/forecast?steps=3').catch(() => null),
+      ]);
+      renderChart(hist.map(x => x.est_wait_min).reverse(), r.crowd_level);
+      renderForecast(fc);
+      state.fails = 0;
+      setMode('live', `live · ${state.detector || 'api'}`);
+      if (state.tick % 5 === 0 && state.role === 'staff') refreshStaffData();
+      state.tick++;
+    } catch (e) {
+      state.fails++;
+      setMode('error', state.fails >= 3 ? 'backend unreachable, retrying' : `error: ${e.message}`);
+      $('advice').textContent = e.message;
+    }
+  }
+
+  function startLive() {
+    liveTick();
+    state.timer = setInterval(liveTick, POLL_MS);
+    refreshFeedbackSummary();
+  }
+
+  // ---------- offline demo (same behaviour as the first prototype) ----------
+  const demo = { data: [], idx: 0, playing: false, timer: null };
+  function buildDemo() {
+    let seed = 42; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    for (let i = 0; i <= 36; i++) {
+      const t = i / 36, bell = Math.exp(-Math.pow(t - 0.58, 2) / (2 * 0.16 * 0.16));
+      const count = Math.max(0, Math.round(2 + bell * 20 + (rnd() - 0.5) * 3));
+      const wait = count === 0 ? 0 : Math.max(1, Math.ceil(count / 1.1));
+      const level = count <= 6 ? 'LOW' : count <= 14 ? 'MEDIUM' : 'HIGH';
+      const m = i * 5, hh = 11 + Math.floor(m / 60), mm = m % 60;
+      const h12 = ((hh + 11) % 12) + 1;
+      demo.data.push({ count, est_wait_min: wait, crowd_level: level, source: 'offline demo',
+        label: `${h12}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}` });
+    }
+  }
+  function renderDemo(i) {
+    const d = demo.data[i];
+    $('demoTime').textContent = d.label;
+    renderReading(d, d.label);
+    renderChart(demo.data.slice(Math.max(0, i - 29), i + 1).map(x => x.est_wait_min), d.crowd_level);
+    const ahead = demo.data[Math.min(i + 3, demo.data.length - 1)];
+    renderForecast({ forecast_count: ahead.count, steps_ahead: 3, crowd_level: ahead.crowd_level, est_wait_min: ahead.est_wait_min, based_on_readings: 8 });
+  }
+  function startOffline() {
+    setMode('offline', 'offline demo (no backend)');
+    buildDemo(); renderDemo(0);
+    $('demoSlider').addEventListener('input', e => { demo.idx = +e.target.value; renderDemo(demo.idx); });
+    $('demoPlay').addEventListener('click', () => {
+      demo.playing = !demo.playing;
+      $('demoPlay').textContent = demo.playing ? 'Pause' : 'Play lunch rush';
+      clearInterval(demo.timer);
+      if (demo.playing) demo.timer = setInterval(() => {
+        demo.idx = (demo.idx + 1) % demo.data.length; $('demoSlider').value = demo.idx; renderDemo(demo.idx);
+      }, 350);
+    });
+  }
+
+  // ---------- forms ----------
+  function setStatus(el, msg, kind) { el.textContent = msg; el.className = 'status ' + (kind || ''); }
+
+  $('logBtn').addEventListener('click', async () => {
+    const pred = parseFloat($('predIn').value), act = parseFloat($('actIn').value);
+    if (state.mode !== 'live') return setStatus($('logStatus'), 'Connect to the backend to save measurements.', 'bad');
+    if (!Number.isFinite(pred) || !Number.isFinite(act) || pred < 0 || act < 0) return setStatus($('logStatus'), 'Enter both values as numbers of minutes (0 or more).', 'bad');
+    try {
+      await api('/actual-wait', { method: 'POST', body: JSON.stringify({ predicted_min: pred, actual_min: act }) });
+      $('actIn').value = ''; setStatus($('logStatus'), 'Measurement saved.', 'ok'); refreshStaffData();
+    } catch (e) { setStatus($('logStatus'), e.message, 'bad'); }
+  });
+
+  const starBox = $('stars');
+  for (let i = 1; i <= 5; i++) {
+    const b = document.createElement('button'); b.textContent = i; b.setAttribute('aria-label', `${i} out of 5`);
+    b.addEventListener('click', () => { state.rating = i; [...starBox.children].forEach((c, k) => c.classList.toggle('on', k < i)); });
+    starBox.appendChild(b);
+  }
+  $('fbBtn').addEventListener('click', async () => {
+    if (state.mode !== 'live') return setStatus($('fbStatus'), 'Connect to the backend to send feedback.', 'bad');
+    if (!state.rating) return setStatus($('fbStatus'), 'Pick a rating from 1 to 5 first.', 'bad');
+    try {
+      await api('/feedback', { method: 'POST', body: JSON.stringify({ role: state.role, rating: state.rating, comment: $('fbComment').value.trim() }) });
+      $('fbComment').value = ''; setStatus($('fbStatus'), 'Thank you, feedback saved.', 'ok'); refreshFeedbackSummary();
+    } catch (e) { setStatus($('fbStatus'), e.message, 'bad'); }
+  });
+
+  // ---------- view toggle ----------
+  function setRole(role) {
+    state.role = role;
+    document.body.classList.toggle('staff', role === 'staff');
+    $('btnStudent').classList.toggle('active', role === 'student');
+    $('btnStaff').classList.toggle('active', role === 'staff');
+    $('fbRole').textContent = role;
+    if (state.current) renderReading(state.current, $('clock').textContent);
+    if (role === 'staff' && state.mode === 'live') refreshStaffData();
+  }
+  $('btnStudent').addEventListener('click', () => setRole('student'));
+  $('btnStaff').addEventListener('click', () => setRole('staff'));
+
+  // ---------- start ----------
+  (async () => {
+    try {
+      const h = await api('/health');
+      state.detector = h.detector;
+      setMode('live', `live · ${h.detector}`);
+      startLive();
+    } catch (e) { startOffline(); }
+  })();
+})();
+</script>
+</body>
+</html>
